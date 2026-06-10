@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>La Calle 58 — Cocina Venezolana · Alcântara, Lisboa</title>
+  <meta name="description"
+    content="Restaurante venezolano en Alcântara, Lisboa. Arepas, cachapas y clásicos criollos. Mar–Vie 17h–23h · Sáb 10:30–14:30 &amp; 17h–23h">
+  <meta property="og:title"       content="La Calle 58 — Cocina Venezolana · Lisboa">
+  <meta property="og:description" content="Arepas, cachapas y clásicos venezolanos en Alcântara, Lisboa">
+  <meta property="og:image"       content="assets/hero.jpg">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500;700&display=swap"
+        rel="stylesheet">
+
+  <!-- Styles -->
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+
+<body>
+
+  <!-- Noise texture overlay -->
+  <svg class="noise-layer" viewBox="0 0 200 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
+    <filter id="nz">
+      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
+      <feColorMatrix type="saturate" values="0" />
+    </filter>
+    <rect width="100%" height="100%" filter="url(#nz)" />
+  </svg>
+
+  <!-- Loader -->
+  <div id="loader" role="progressbar" aria-label="Cargando">
+    <div class="loader-logo">LA CALLE <em>58</em></div>
+    <div class="loader-bar">
+      <div class="loader-fill" id="loaderFill"></div>
+    </div>
+    <div id="loaderCount">0%</div>
+  </div>
+
+  <!-- ─── NAVIGATION ─── -->
+  <nav id="mainNav" role="navigation" aria-label="Principal">
+    <a href="#" class="nav-logo">LA CALLE <em>58</em></a>
+
+    <div class="nav-links">
+      <a href="#menu">Menú</a>
+      <a href="#nosotros">Nosotros</a>
+      <a href="#contacto">Contacto</a>
+      <a href="https://www.instagram.com/lacalle58.pt" target="_blank" rel="noopener" class="nav-cta">Reservar</a>
+    </div>
+
+    <button class="nav-burger" id="navBurger" aria-label="Abrir menú" aria-expanded="false">
+      <span></span>
+      <span></span>
+      <span></span>
+    </button>
+  </nav>
+
+  <!-- Mobile nav overlay -->
+  <div class="nav-mobile" id="navMobile" aria-hidden="true">
+    <a href="#menu"      onclick="closeMobileNav()">Menú</a>
+    <a href="#nosotros"  onclick="closeMobileNav()">Nosotros</a>
+    <a href="#contacto"  onclick="closeMobileNav()">Contacto</a>
+    <a href="https://www.instagram.com/lacalle58.pt" target="_blank" rel="noopener"
+       class="mob-cta" onclick="closeMobileNav()">Reservar</a>
+    <div class="nav-mobile-footer">@lacalle58.pt</div>
+  </div>
+
+  <!-- ─── HERO ─── -->
+  <section class="hero" aria-label="Hero">
+    <div class="hero-sticky">
+
+      <canvas id="heroCanvas" aria-hidden="true"></canvas>
+
+      <div class="hero-content">
+        <h1>LA CALLE <em>58</em></h1>
+        <p class="hero-sub">Arepas · Cachapas · Clásicos</p>
+        <p class="hero-loc">Alcântara, Lisboa</p>
+        <a href="#menu" class="btn-primary">
+          Ver el Menú
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+            <path d="M5 12h14M12 5l7 7-7 7" />
+          </svg>
+        </a>
+      </div>
+
+      <div class="scroll-hint" aria-hidden="true">scroll</div>
+    </div>
+  </section>
+
+  <!-- ─── MARQUEE ─── -->
+  <section class="marquee-band" aria-hidden="true">
+    <div class="marquee-row" id="marqueeRow">
+      <div class="marquee-content" id="marqueeContent">
+        <span class="marquee-item fill">AREPAS<span class="dot"></span></span>
+        <span class="marquee-item stroke">CACHAPAS<span class="dot"></span></span>
+        <span class="marquee-item fill">PEPITOS<span class="dot"></span></span>
+        <span class="marquee-item stroke">CLÁSICOS<span class="dot"></span></span>
+        <span class="marquee-item fill">TEQUEÑOS<span class="dot"></span></span>
+        <span class="marquee-item stroke">POSTRES<span class="dot"></span></span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── MENU ─── -->
+  <section id="menu">
+    <div class="menu-wrap">
+
+      <div class="menu-hd fade-up">
+        <div class="section-eyebrow">Nuestra Carta</div>
+        <h2>El sabor de Venezuela<br>en cada plato</h2>
+        <p>Ingredientes frescos, recetas auténticas y el alma criolla que nos hace únicos en Lisboa.</p>
+      </div>
+
+      <div class="spot-grid" id="spotGrid">
+
+        <div class="spot-card">
+          <div class="spot-tag">Petiscos</div>
+          <h3>Tequeños</h3>
+          <p>Palitos de masa de trigo rellenos de queso blanco venezolano. Crujientes por fuera, derretidos por dentro. El picoteo perfecto para comenzar.</p>
+          <div class="price-row">
+            <span class="price">desde €7</span>
+            <span class="price-hint">Para compartir</span>
+          </div>
+        </div>
+
+        <div class="spot-card">
+          <div class="spot-tag">Arepas</div>
+          <h3>Pabellón</h3>
+          <p>Masa de maíz blanco rellena con carne mechada, caraotas negras, tajadas y queso amarillo. La arepa más criolla que existe.</p>
+          <div class="price-row">
+            <span class="price">desde €11</span>
+            <span class="price-hint">Rellenos variados</span>
+          </div>
+        </div>
+
+        <div class="spot-card">
+          <div class="spot-tag">Cachapas</div>
+          <h3>Cachapa Llanera</h3>
+          <p>Tortilla dulce de maíz tierno, rellena de queso de mano y cochino frito. La estrella de la carta — dulce, salada y perfecta.</p>
+          <div class="price-row">
+            <span class="price">desde €18</span>
+            <span class="price-hint">Plato estrella</span>
+          </div>
+        </div>
+
+        <div class="spot-card">
+          <div class="spot-tag">Clásicos</div>
+          <h3>Pabellón Criollo</h3>
+          <p>El plato nacional venezolano. Arroz blanco, caraotas negras, carne mechada, tajadas y queso blanco. Patrimonio en un plato.</p>
+          <div class="price-row">
+            <span class="price">desde €15</span>
+            <span class="price-hint">Plato completo</span>
+          </div>
+        </div>
+
+        <div class="spot-card">
+          <div class="spot-tag">Pepitos</div>
+          <h3>Pepito Gratinado</h3>
+          <p>Sándwich venezolano de pan tipo baguette con carne de res, queso gratinado, aguacate y las salsas secretas de la casa.</p>
+          <div class="price-row">
+            <span class="price">desde €19.50</span>
+            <span class="price-hint">Con guarnición</span>
+          </div>
+        </div>
+
+        <div class="spot-card">
+          <div class="spot-tag">Postres</div>
+          <h3>Tres Leches</h3>
+          <p>Bizcocho empapado en tres tipos de leche, decorado con nata montada. El final dulce que toda buena comida criolla merece.</p>
+          <div class="price-row">
+            <span class="price">desde €5</span>
+            <span class="price-hint">Postres criollos</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── STATS ─── -->
+  <section>
+    <div class="stats-wrap">
+
+      <div class="stats-hd fade-up">
+        <div class="section-eyebrow">En números</div>
+        <h2>Más que un restaurante,<br>una comunidad</h2>
+      </div>
+
+      <div class="stats-grid">
+
+        <div class="stat-item fade-up">
+          <div class="stat-num-row">
+            <span class="stat-pfx">+</span>
+            <div class="odometer" data-value="30"></div>
+          </div>
+          <div class="stat-label">Platos en carta</div>
+        </div>
+
+        <div class="stat-item fade-up">
+          <div class="stat-num-row">
+            <div class="odometer" data-value="3"></div>
+          </div>
+          <div class="stat-label">Años en Lisboa</div>
+        </div>
+
+        <div class="stat-item fade-up">
+          <div class="stat-num-row">
+            <span class="stat-pfx">+</span>
+            <div class="odometer" data-value="5000"></div>
+          </div>
+          <div class="stat-label">Clientes felices</div>
+        </div>
+
+        <div class="stat-item fade-up">
+          <div class="stat-num-row">
+            <div class="odometer" data-value="100" data-suffix="%"></div>
+          </div>
+          <div class="stat-label">Sabor venezolano</div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── ABOUT ─── -->
+  <section id="nosotros" class="colorshift-section" data-bg="#131008" data-text="#F0EDE8">
+    <div class="about-wrap">
+      <div class="fade-up">
+        <div class="section-eyebrow" style="justify-content: center">Nuestra historia</div>
+        <blockquote>
+          "Nacimos para llevar el<br><em>alma criolla</em> a Lisboa"
+        </blockquote>
+        <p class="about-body">
+          La Calle 58 nació en Alcântara con una misión simple: traer el sabor auténtico de Venezuela a las calles de
+          Lisboa. Cada arepa se rellena con ingredientes frescos, cada cachapa se prepara con masa de maíz dulce y amor
+          por la tradición. Más que un restaurante — somos un pedacito de Caracas en Portugal, donde venezolanos y
+          lisboetas se sientan juntos a celebrar la cocina criolla.
+        </p>
+        <a href="https://www.instagram.com/lacalle58.pt" target="_blank" rel="noopener" class="btn-outline">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <rect x="2" y="2" width="20" height="20" rx="5" ry="5" />
+            <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+            <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+          </svg>
+          Síguenos en Instagram
+        </a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── CONTACT ─── -->
+  <section id="contacto" class="colorshift-section" data-bg="#0D0D0D" data-text="#F0EDE8">
+    <div class="contact-wrap">
+
+      <div class="contact-hd fade-up">
+        <div class="section-eyebrow">Encuéntranos</div>
+        <h2>Ven a visitarnos</h2>
+      </div>
+
+      <div class="contact-grid">
+
+        <!-- Address -->
+        <div class="c-card fade-up">
+          <span class="c-label">Dirección</span>
+          <div class="c-value">Calçada da Tapada 15<br>Alcântara</div>
+          <div class="c-sub">1300-544 Lisboa, Portugal</div>
+          <a href="https://maps.google.com/?q=Calçada+da+Tapada+15,+Lisboa" target="_blank" rel="noopener" class="c-link">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+            Como llegar
+          </a>
+        </div>
+
+        <!-- Social -->
+        <div class="c-card fade-up">
+          <span class="c-label">Redes sociales</span>
+          <div class="c-value">@lacalle58.pt</div>
+          <div class="c-sub">Menú del día, novedades y reservas por DM. Te esperamos.</div>
+          <a href="https://www.instagram.com/lacalle58.pt" target="_blank" rel="noopener" class="c-link">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <rect x="2" y="2" width="20" height="20" rx="5" />
+              <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z" />
+              <line x1="17.5" y1="6.5" x2="17.51" y2="6.5" />
+            </svg>
+            Ver Instagram
+          </a>
+        </div>
+
+        <!-- Hours -->
+        <div class="c-card full fade-up">
+          <span class="c-label">Horario</span>
+          <div class="hours-row">
+            <span class="hours-day">Martes – Viernes</span>
+            <span class="hours-time">17:00 – 23:00</span>
+          </div>
+          <div class="hours-row">
+            <span class="hours-day">Sábado — mediodía</span>
+            <span class="hours-time">10:30 – 14:30</span>
+          </div>
+          <div class="hours-row">
+            <span class="hours-day">Sábado — noche</span>
+            <span class="hours-time">17:00 – 23:00</span>
+          </div>
+          <div class="hours-row">
+            <span class="hours-day">Domingo – Lunes</span>
+            <span class="hours-time closed">Cerrado</span>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </section>
+
+  <!-- ─── FOOTER ─── -->
+  <footer>
+    <div class="footer-logo">LA CALLE <em>58</em></div>
+    <div class="footer-copy">© 2025 La Calle 58 · Alcântara, Lisboa</div>
+    <a href="https://www.instagram.com/lacalle58.pt" target="_blank" rel="noopener" class="footer-ig">@lacalle58.pt</a>
+  </footer>
+
+  <!-- Scripts — GSAP first, then our module -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"></script>
+  <script src="js/main.js"></script>
+
+</body>
+</html>
