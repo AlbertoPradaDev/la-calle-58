@@ -33,21 +33,24 @@
 
   // GPU layer promotion — faster compositing on mobile
   canvas.style.transform = 'translateZ(0)';
-  if (isMobile) ctx.imageSmoothingQuality = 'low';
+
+  // Cap DPR at 2 — beyond 2x there is no visible difference but memory doubles
+  var DPR = isMobile ? Math.min(window.devicePixelRatio || 1, 2) : 1;
 
   var frames       = new Array(TOTAL);
   var imagesLoaded = 0; // counts raw Image onload
   var bitmapsReady = 0; // counts createImageBitmap conversions
   var currentFrame = 0;
 
-  /** Size canvas to viewport and redraw the current frame */
+  /** Size canvas to viewport, accounting for device pixel ratio on mobile */
   function resizeCanvas() {
     var w = window.innerWidth;
     var h = window.innerHeight;
-    canvas.width        = w;
-    canvas.height       = h;
+    canvas.width        = w * DPR;
+    canvas.height       = h * DPR;
     canvas.style.width  = w + 'px';
     canvas.style.height = h + 'px';
+    if (DPR !== 1) ctx.scale(DPR, DPR);
     if (bitmapsReady > 0) drawFrame(currentFrame);
   }
 
@@ -137,12 +140,8 @@
   }
 
   /**
-   * GSAP scroll-driven scrub with per-frame snap.
-   * Mobile uses scrub: true (direct scroll→frame mapping, no GSAP ticker).
-   * Desktop uses scrub: 0.3 (cinematic smoothing).
-   *
-   * Draws are throttled to rAF so the canvas updates at most once per 16ms,
-   * regardless of how many scroll events iOS fires per frame when scrolling down.
+   * Throttle draws to rAF — canvas updates at most once per 16ms regardless
+   * of how many scroll events fire in that window (critical for iOS momentum scroll).
    */
   var rafPending = false;
   var pendingIdx = 0;
@@ -158,24 +157,49 @@
     }
   }
 
-  gsap.to({ f: 0 }, {
-    f: TOTAL - 1,
-    snap: 'f',
-    ease: 'none',
-    scrollTrigger: {
-      trigger: '.hero',
-      start:   'top top',
-      end:     'bottom top',
-      scrub:   isMobile ? true : 0.3
-    },
-    onUpdate: function () {
-      var idx = Math.round(this.targets()[0].f);
+  if (isMobile) {
+    /**
+     * Mobile: plain scroll listener — no GSAP ticker overhead.
+     * Direct scroll position → frame index in one step, throttled to rAF.
+     * Faster and more reliable than GSAP scrub on iOS.
+     */
+    var heroScrollEl = document.querySelector('.hero');
+    function updateMobileHero() {
+      var scrollTop  = window.scrollY;
+      var heroH      = heroScrollEl.offsetHeight; // 300vh on mobile
+      var viewH      = window.innerHeight;
+      var progress   = Math.min(1, Math.max(0, scrollTop / (heroH - viewH)));
+      var idx        = Math.round(progress * (TOTAL - 1));
       if (idx !== currentFrame) {
         currentFrame = idx;
         scheduleDrawFrame(idx);
       }
     }
-  });
+    window.addEventListener('scroll', updateMobileHero, { passive: true });
+
+  } else {
+    /**
+     * Desktop: GSAP scrub with cinematic 0.3s smoothing.
+     */
+    gsap.to({ f: 0 }, {
+      f: TOTAL - 1,
+      snap: 'f',
+      ease: 'none',
+      scrollTrigger: {
+        trigger: '.hero',
+        start:   'top top',
+        end:     'bottom top',
+        scrub:   0.3
+      },
+      onUpdate: function () {
+        var idx = Math.round(this.targets()[0].f);
+        if (idx !== currentFrame) {
+          currentFrame = idx;
+          scheduleDrawFrame(idx);
+        }
+      }
+    });
+  }
 
 
   /* ─────────────────────────────────────────────────────
