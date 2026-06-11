@@ -56,6 +56,13 @@
   }
 
   window.addEventListener('resize', resizeCanvas);
+
+  // Reload when crossing the mobile/desktop breakpoint (DevTools responsive mode).
+  // In real usage this never fires — real users don't switch viewports mid-session.
+  window.addEventListener('resize', function () {
+    var nowMobile = window.innerWidth < 768;
+    if (nowMobile !== isMobile) window.location.reload();
+  });
   resizeCanvas();
 
   /** Cover-fit draw — works with both HTMLImageElement and ImageBitmap */
