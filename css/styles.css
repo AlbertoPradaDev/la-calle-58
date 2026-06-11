@@ -336,6 +336,14 @@ nav.scrolled {
   left: 0;
   display: block;
   z-index: 1;
+  transform: translateZ(0); /* promote to GPU layer */
+}
+
+@media (max-width: 767px) {
+  /* More scroll distance = each frame lasts longer = smoother animation */
+  .hero {
+    height: 300vh;
+  }
 }
 
 /* Positioning container only — no background, no border, no border-radius */

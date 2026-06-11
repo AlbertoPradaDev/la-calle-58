@@ -2,7 +2,7 @@
  * La Calle 58 — Main Script
  *
  * Modules:
- *   1. Canvas Hero        — 121-frame scroll-scrub via GSAP
+ *   1. Canvas Hero        — scroll-scrub via GSAP (mobile: 61 frames @ 640×360, desktop: 121 @ 1280×720)
  *   2. Hero Text Fade     — plain scroll listener (immune to GSAP refresh bugs)
  *   3. Navigation         — scroll state + hamburger menu
  *   4. Kinetic Marquee    — requestAnimationFrame loop, scroll-velocity reactive
@@ -19,14 +19,25 @@
   gsap.registerPlugin(ScrollTrigger);
 
   /* ─────────────────────────────────────────────────────
-     1. CANVAS HERO — 121-frame scroll scrub
+     1. CANVAS HERO — scroll-driven frame sequence
+     Mobile:  61 frames, 640×360, assets/frames-mobile/
+     Desktop: 121 frames, 1280×720, assets/frames/
   ───────────────────────────────────────────────────── */
+
+  var isMobile = window.innerWidth < 768;
+  var TOTAL    = isMobile ? 61 : 121;
+  var FOLDER   = isMobile ? 'assets/frames-mobile' : 'assets/frames';
 
   var canvas = document.getElementById('heroCanvas');
   var ctx    = canvas.getContext('2d');
-  var TOTAL  = 121;
-  var frames = new Array(TOTAL);
-  var loaded = 0;
+
+  // GPU layer promotion — faster compositing on mobile
+  canvas.style.transform = 'translateZ(0)';
+  if (isMobile) ctx.imageSmoothingQuality = 'low';
+
+  var frames       = new Array(TOTAL);
+  var imagesLoaded = 0; // counts raw Image onload
+  var bitmapsReady = 0; // counts createImageBitmap conversions
   var currentFrame = 0;
 
   /** Size canvas to viewport and redraw the current frame */
@@ -37,62 +48,99 @@
     canvas.height       = h;
     canvas.style.width  = w + 'px';
     canvas.style.height = h + 'px';
-    if (loaded > 0) drawFrame(currentFrame);
+    if (bitmapsReady > 0) drawFrame(currentFrame);
   }
 
   window.addEventListener('resize', resizeCanvas);
   resizeCanvas();
 
-  /** Cover-fit draw: scales the image so it always fills the canvas */
+  /** Cover-fit draw — works with both HTMLImageElement and ImageBitmap */
   function drawFrame(idx) {
-    var img = frames[idx];
-    if (!img || !img.complete || !img.naturalWidth) return;
-    var r  = Math.max(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight);
-    var dw = img.naturalWidth  * r;
-    var dh = img.naturalHeight * r;
+    var src = frames[idx];
+    if (!src) return;
+
+    var srcW = src.naturalWidth  || src.width;
+    var srcH = src.naturalHeight || src.height;
+    if (!srcW || !srcH) return;
+
+    var r  = Math.max(canvas.width / srcW, canvas.height / srcH);
+    var dw = srcW * r;
+    var dh = srcH * r;
     ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(img, (canvas.width - dw) / 2, (canvas.height - dh) / 2, dw, dh);
+    ctx.drawImage(src, (canvas.width - dw) / 2, (canvas.height - dh) / 2, dw, dh);
   }
 
-  /** Preload all frames; dismiss loader once every frame is ready */
+  /**
+   * Called once per frame after it's fully ready (bitmap converted or fallback set).
+   * Loader dismissal only fires when ALL bitmaps are ready — prevents blank canvas flash.
+   */
+  function onFrameReady(n) {
+    bitmapsReady++;
+
+    // Update loader progress based on bitmap-ready count (more accurate than image load)
+    var pct = Math.round(bitmapsReady / TOTAL * 100);
+    document.getElementById('loaderFill').style.width  = pct + '%';
+    document.getElementById('loaderCount').textContent = pct + '%';
+
+    // Draw frame 0 as soon as it's ready
+    if (n === 0) {
+      currentFrame = 0;
+      drawFrame(0);
+    }
+
+    // All bitmaps ready — paint once more then dismiss loader
+    if (bitmapsReady === TOTAL) {
+      resizeCanvas();
+      drawFrame(0);
+      requestAnimationFrame(function () {
+        drawFrame(0); // second draw after first paint cycle (CDN race-condition fix)
+        requestAnimationFrame(function () {
+          var loader = document.getElementById('loader');
+          loader.style.opacity = '0';
+          setTimeout(function () { loader.style.display = 'none'; }, 700);
+        });
+      });
+    }
+  }
+
+  /** Preload all frames, converting to ImageBitmap for zero-cost GPU draws */
   for (var i = 0; i < TOTAL; i++) {
     (function (n) {
       var img = new Image();
 
       img.onload = function () {
-        loaded++;
-        var pct = Math.round(loaded / TOTAL * 100);
-        document.getElementById('loaderFill').style.width  = pct + '%';
-        document.getElementById('loaderCount').textContent = pct + '%';
-
-        // Draw the first frame as soon as it arrives
-        if (loaded === 1) {
-          currentFrame = 0;
-          drawFrame(0);
-        }
-
-        // All frames ready: ensure canvas is painted before fading the loader
-        if (loaded === TOTAL) {
-          resizeCanvas();
-          drawFrame(0);
-          requestAnimationFrame(function () {
-            drawFrame(0); // second draw after first paint cycle (CDN race-condition fix)
-            requestAnimationFrame(function () {
-              var loader = document.getElementById('loader');
-              loader.style.opacity = '0';
-              setTimeout(function () { loader.style.display = 'none'; }, 700);
-            });
+        imagesLoaded++;
+        if (window.createImageBitmap) {
+          // Pre-decode JPEG → GPU-ready bitmap; drawImage becomes a fast blit
+          createImageBitmap(img).then(function (bitmap) {
+            frames[n] = bitmap;
+            onFrameReady(n);
+          }).catch(function () {
+            // createImageBitmap failed for this frame — fall back to raw Image
+            frames[n] = img;
+            onFrameReady(n);
           });
+        } else {
+          // Browser doesn't support createImageBitmap — use Image directly
+          frames[n] = img;
+          onFrameReady(n);
         }
       };
 
-      img.onerror = function () { loaded++; }; // skip missing frames gracefully
-      img.src = 'assets/frames/frame-' + String(n + 1).padStart(4, '0') + '.jpg';
-      frames[n] = img;
+      img.onerror = function () {
+        imagesLoaded++;
+        bitmapsReady++; // count it as done so loader doesn't hang
+      };
+
+      img.src = FOLDER + '/frame-' + String(n + 1).padStart(4, '0') + '.jpg';
     })(i);
   }
 
-  /** GSAP scroll-driven scrub with per-frame snap */
+  /**
+   * GSAP scroll-driven scrub with per-frame snap.
+   * Mobile uses scrub: 0.05 (near-instant, no perceived lag).
+   * Desktop uses scrub: 0.3 (cinematic smoothing).
+   */
   gsap.to({ f: 0 }, {
     f: TOTAL - 1,
     snap: 'f',
@@ -101,7 +149,7 @@
       trigger: '.hero',
       start:   'top top',
       end:     'bottom top',
-      scrub:   0.3
+      scrub:   isMobile ? 0.05 : 0.3
     },
     onUpdate: function () {
       var idx = Math.round(this.targets()[0].f);
@@ -123,7 +171,7 @@
   var scrollHintEl  = document.querySelector('.scroll-hint');
 
   function updateHeroFade() {
-    var heroH = heroEl.offsetHeight; // 200vh
+    var heroH = heroEl.offsetHeight;
     var s     = window.scrollY;
 
     // .hero-content fades from opacity 1→0 between 10% and 35% of hero height
@@ -149,8 +197,8 @@
      3. NAVIGATION — scroll state + hamburger menu
   ───────────────────────────────────────────────────── */
 
-  var mainNav  = document.getElementById('mainNav');
-  var burger   = document.getElementById('navBurger');
+  var mainNav   = document.getElementById('mainNav');
+  var burger    = document.getElementById('navBurger');
   var mobileNav = document.getElementById('navMobile');
 
   // Solid navbar after 60px of scroll
@@ -292,9 +340,9 @@
 
   document.querySelectorAll('.colorshift-section').forEach(function (sec) {
     ScrollTrigger.create({
-      trigger:    sec,
-      start:      'top 65%',
-      end:        'bottom 35%',
+      trigger:     sec,
+      start:       'top 65%',
+      end:         'bottom 35%',
       onEnter:     function () { document.body.style.background = sec.dataset.bg; },
       onEnterBack: function () { document.body.style.background = sec.dataset.bg; },
       onLeave:     function () { document.body.style.background = '#111111'; },
@@ -314,8 +362,8 @@
       duration: 0.85,
       ease:     'power3.out',
       scrollTrigger: {
-        trigger:      el,
-        start:        'top 90%',
+        trigger:       el,
+        start:         'top 90%',
         toggleActions: 'play none none none'
       }
     });
