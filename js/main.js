@@ -138,9 +138,26 @@
 
   /**
    * GSAP scroll-driven scrub with per-frame snap.
-   * Mobile uses scrub: 0.05 (near-instant, no perceived lag).
+   * Mobile uses scrub: true (direct scroll→frame mapping, no GSAP ticker).
    * Desktop uses scrub: 0.3 (cinematic smoothing).
+   *
+   * Draws are throttled to rAF so the canvas updates at most once per 16ms,
+   * regardless of how many scroll events iOS fires per frame when scrolling down.
    */
+  var rafPending = false;
+  var pendingIdx = 0;
+
+  function scheduleDrawFrame(idx) {
+    pendingIdx = idx;
+    if (!rafPending) {
+      rafPending = true;
+      requestAnimationFrame(function () {
+        rafPending = false;
+        drawFrame(pendingIdx);
+      });
+    }
+  }
+
   gsap.to({ f: 0 }, {
     f: TOTAL - 1,
     snap: 'f',
@@ -149,13 +166,13 @@
       trigger: '.hero',
       start:   'top top',
       end:     'bottom top',
-      scrub:   isMobile ? 0.05 : 0.3
+      scrub:   isMobile ? true : 0.3
     },
     onUpdate: function () {
       var idx = Math.round(this.targets()[0].f);
       if (idx !== currentFrame) {
         currentFrame = idx;
-        drawFrame(idx);
+        scheduleDrawFrame(idx);
       }
     }
   });
