@@ -50,7 +50,8 @@
     canvas.height       = h * DPR;
     canvas.style.width  = w + 'px';
     canvas.style.height = h + 'px';
-    if (DPR !== 1) ctx.scale(DPR, DPR);
+    // NO ctx.scale() — canvas.width/height are already in physical pixels.
+    // ctx.scale() would accumulate on every resize call causing progressive zoom.
     if (bitmapsReady > 0) drawFrame(currentFrame);
   }
 
