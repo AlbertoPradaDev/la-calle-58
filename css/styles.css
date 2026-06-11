@@ -139,16 +139,15 @@ nav {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  transition: padding 0.4s var(--ease), background 0.4s var(--ease), border-color 0.4s var(--ease);
-  border-bottom: 1px solid transparent;
+  transition: padding 0.4s var(--ease);
+  background: rgba(17, 17, 17, 0.88);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border-bottom: 1px solid var(--border);
 }
 
 nav.scrolled {
   padding: 14px 40px;
-  background: rgba(17, 17, 17, 0.88);
-  backdrop-filter: blur(14px);
-  -webkit-backdrop-filter: blur(14px);
-  border-bottom-color: var(--border);
 }
 
 .nav-logo {
