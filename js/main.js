@@ -42,24 +42,27 @@
   var bitmapsReady = 0; // counts createImageBitmap conversions
   var currentFrame = 0;
 
-  /** Size canvas to viewport, accounting for device pixel ratio on mobile */
+  /** Size canvas to viewport, accounting for device pixel ratio on mobile.
+   *  Uses visualViewport.height on mobile to avoid iOS browser-chrome resize events. */
   function resizeCanvas() {
     var w = window.innerWidth;
-    var h = window.innerHeight;
+    var h = (isMobile && window.visualViewport) ? window.visualViewport.height : window.innerHeight;
     canvas.width        = w * DPR;
     canvas.height       = h * DPR;
     canvas.style.width  = w + 'px';
     canvas.style.height = h + 'px';
     // NO ctx.scale() — canvas.width/height are already in physical pixels.
-    // ctx.scale() would accumulate on every resize call causing progressive zoom.
     if (bitmapsReady > 0) drawFrame(currentFrame);
   }
 
-  window.addEventListener('resize', resizeCanvas);
-
-  // Reload when crossing the mobile/desktop breakpoint (DevTools responsive mode).
-  // In real usage this never fires — real users don't switch viewports mid-session.
+  // Single resize listener — recalculates canvas + mobile scroll cache + breakpoint check.
   window.addEventListener('resize', function () {
+    resizeCanvas();
+    if (isMobile) {
+      heroH           = heroScrollEl.offsetHeight;
+      viewH           = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+      heroScrollRange = heroH - viewH;
+    }
     var nowMobile = window.innerWidth < 768;
     if (nowMobile !== isMobile) window.location.reload();
   });
@@ -168,16 +171,16 @@
   if (isMobile) {
     /**
      * Mobile: plain scroll listener — no GSAP ticker overhead.
-     * Direct scroll position → frame index in one step, throttled to rAF.
-     * Faster and more reliable than GSAP scrub on iOS.
+     * heroH/viewH/heroScrollRange cached outside handler to avoid layout thrash on every event.
+     * visualViewport.height used so iOS browser-chrome hide/show doesn't resize the canvas mid-scroll.
      */
-    var heroScrollEl = document.querySelector('.hero');
+    var heroScrollEl    = document.querySelector('.hero');
+    var heroH           = heroScrollEl.offsetHeight;
+    var viewH           = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+    var heroScrollRange = heroH - viewH;
+
     function updateMobileHero() {
-      var scrollTop  = window.scrollY;
-      var heroH      = heroScrollEl.offsetHeight; // 300vh on mobile
-      var viewH      = window.innerHeight;
-      var progress   = Math.min(1, Math.max(0, scrollTop / (heroH - viewH)));
-      var idx        = Math.round(progress * (TOTAL - 1));
+      var idx = Math.round(Math.min(1, Math.max(0, window.scrollY / heroScrollRange)) * (TOTAL - 1));
       if (idx !== currentFrame) {
         currentFrame = idx;
         scheduleDrawFrame(idx);
