@@ -90,10 +90,13 @@
   var lastFadeProg  = -1;
   var lastHintProg  = -1;
 
-  // Mobile-only scroll vars — hoisted so resize handler can update them
-  var heroScrollEl   = isMobile ? heroEl : null;
-  var heroH          = isMobile ? heroEl.offsetHeight : 0;
-  var viewH          = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+  // Mobile-only scroll vars — hoisted so resize handler can update them.
+  // viewH uses window.innerHeight (= "large viewport" on iOS 13+, matches 100vh in CSS).
+  // visualViewport.height shrinks when the browser chrome is visible and grows when it hides —
+  // using it here would cause heroScrollRange to jump on the first scroll (zoom artifact).
+  var heroScrollEl    = isMobile ? heroEl : null;
+  var heroH           = isMobile ? heroEl.offsetHeight : 0;
+  var viewH           = window.innerHeight;
   var heroScrollRange = isMobile ? heroH - viewH : 0;
 
   function updateDrawGeom() {
@@ -117,7 +120,10 @@
 
   function resizeCanvas() {
     var w = window.innerWidth;
-    var h = (isMobile && window.visualViewport) ? window.visualViewport.height : window.innerHeight;
+    // window.innerHeight = "large viewport" on iOS 13+ — stable across chrome show/hide.
+    // visualViewport.height would be smaller when the chrome is visible and would grow
+    // on first scroll, triggering a cover-fit recalculation that appears as a zoom.
+    var h = window.innerHeight;
     canvas.width  = w * DPR;
     canvas.height = h * DPR;
     canvas.style.width  = w + 'px';
@@ -126,13 +132,22 @@
     if (bitmapsReady > 0) drawFrame(currentFrame);
   }
 
+  // Track the last resize width so we can skip height-only changes on mobile.
+  // On iOS, the browser chrome hiding/showing fires a resize event but only changes
+  // the height — ignoring these prevents the cover-fit zoom on first scroll.
+  var prevResizeW = window.innerWidth;
+
   // Single consolidated resize handler (was two separate listeners before)
   window.addEventListener('resize', function () {
+    var nowW = window.innerWidth;
+    if (isMobile && nowW === prevResizeW) return; // height-only = iOS chrome toggle
+    prevResizeW = nowW;
+
     resizeCanvas();
     heroFadeH = heroEl.offsetHeight;
     if (isMobile) {
-      heroH          = heroScrollEl.offsetHeight;
-      viewH          = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+      heroH           = heroScrollEl.offsetHeight;
+      viewH           = window.innerHeight;
       heroScrollRange = heroH - viewH;
     }
     var nowMobile = window.innerWidth < 768;
