@@ -1,0 +1,37 @@
+{
+  "name": "La Calle 58",
+  "slug": "la-calle-58",
+  "category": "Venezuelan Restaurant",
+  "location": "Calçada da Tapada 15, Alcântara, Lisboa 1300-544",
+  "hours": "Mar–Vie 17h–23h · Sáb 10:30–14:30 & 17h–23h",
+  "instagram": "@lacalle58.pt",
+  "colors": {
+    "bg": "#111111",
+    "card": "#1C1C1C",
+    "text": "#F0EDE8",
+    "muted": "#666666",
+    "accent": "#FF6B1A",
+    "accent2": "#FF2D20",
+    "border": "#252525"
+  },
+  "fonts": {
+    "heading": "Outfit",
+    "body": "Outfit",
+    "mono": "JetBrains Mono"
+  },
+  "copy": {
+    "tagline": "El sabor de Venezuela en Lisboa",
+    "hero_subtitle": "Arepas · Cachapas · Clásicos — Alcântara, Lisboa",
+    "cta_primary": "Ver el Menú",
+    "cta_secondary": "Reservar Mesa"
+  },
+  "menu_highlights": [
+    { "category": "Petiscos", "name": "Tequeños", "price": "€7" },
+    { "category": "Arepas", "name": "Pabellón", "price": "€11" },
+    { "category": "Cachapas", "name": "Cachapa Llanera", "price": "€24" },
+    { "category": "Clásicos", "name": "Pabellón Criollo", "price": "€15" },
+    { "category": "Pepitos", "name": "Pepito Gratinado", "price": "€19.50" },
+    { "category": "Postres", "name": "Tres Leches", "price": "€5" }
+  ],
+  "modules": ["kinetic-marquee", "spotlight-border", "odometer", "color-shift"]
+}

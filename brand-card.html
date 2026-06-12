@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Brand Card — La Calle 58</title>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Playfair+Display:ital,wght@0,700;1,400&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <style>
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: #0D0A07;
+      color: #F5EDD6;
+      font-family: 'Outfit', sans-serif;
+      padding: 40px;
+      min-height: 100vh;
+    }
+
+    h1 {
+      font-family: 'Playfair Display', serif;
+      font-size: 14px;
+      font-weight: 400;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #9A7A50;
+      margin-bottom: 40px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      max-width: 900px;
+    }
+
+    .card {
+      background: #1A1208;
+      border: 1px solid #2E1F0A;
+      border-radius: 12px;
+      padding: 28px;
+    }
+
+    .card-title {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #9A7A50;
+      margin-bottom: 20px;
+    }
+
+    /* Identity */
+    .brand-name {
+      font-family: 'Playfair Display', serif;
+      font-size: 48px;
+      font-weight: 700;
+      color: #F5EDD6;
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .brand-sub {
+      font-family: 'Playfair Display', serif;
+      font-style: italic;
+      font-size: 18px;
+      color: #E8A020;
+      margin-bottom: 16px;
+    }
+
+    .brand-tagline {
+      font-size: 14px;
+      color: #BBA882;
+      line-height: 1.6;
+    }
+
+    /* Colors */
+    .swatches {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .swatch {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .swatch-block {
+      width: 44px;
+      height: 44px;
+      border-radius: 8px;
+      flex-shrink: 0;
+    }
+
+    .swatch-info {
+      flex: 1;
+    }
+
+    .swatch-name {
+      font-size: 12px;
+      font-weight: 600;
+      color: #F5EDD6;
+    }
+
+    .swatch-hex {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 11px;
+      color: #9A7A50;
+      margin-top: 2px;
+    }
+
+    .swatch-use {
+      font-size: 10px;
+      color: #6B5A45;
+      margin-top: 2px;
+    }
+
+    /* Typography */
+    .type-sample {
+      margin-bottom: 20px;
+    }
+
+    .type-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #9A7A50;
+      margin-bottom: 8px;
+    }
+
+    .type-display {
+      font-family: 'Playfair Display', serif;
+      font-size: 32px;
+      font-weight: 700;
+      color: #F5EDD6;
+    }
+
+    .type-display-italic {
+      font-family: 'Playfair Display', serif;
+      font-size: 22px;
+      font-style: italic;
+      color: #E8A020;
+      margin-top: 4px;
+    }
+
+    .type-body {
+      font-family: 'Outfit', sans-serif;
+      font-size: 15px;
+      color: #BBA882;
+      line-height: 1.6;
+      margin-top: 4px;
+    }
+
+    .type-mono {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #9A7A50;
+      margin-top: 4px;
+    }
+
+    /* Copy */
+    .copy-item {
+      margin-bottom: 14px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid #2E1F0A;
+    }
+
+    .copy-item:last-child {
+      border-bottom: none;
+      margin-bottom: 0;
+      padding-bottom: 0;
+    }
+
+    .copy-label {
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #9A7A50;
+      margin-bottom: 4px;
+    }
+
+    .copy-value {
+      font-size: 14px;
+      color: #F5EDD6;
+      line-height: 1.5;
+    }
+
+    .copy-value a {
+      color: #E8A020;
+      text-decoration: none;
+    }
+
+    /* Menu highlights */
+    .menu-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+    }
+
+    .menu-item {
+      background: #231608;
+      border: 1px solid #3A2810;
+      border-radius: 8px;
+      padding: 10px 14px;
+    }
+
+    .menu-cat {
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: #9A7A50;
+    }
+
+    .menu-name {
+      font-size: 13px;
+      color: #F5EDD6;
+      margin-top: 2px;
+      font-weight: 500;
+    }
+
+    .menu-price {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 12px;
+      color: #E8A020;
+      margin-top: 2px;
+    }
+
+    /* Theme recommendation */
+    .theme-box {
+      grid-column: 1 / -1;
+      background: linear-gradient(135deg, #1A1208 0%, #231608 100%);
+      border: 1px solid #E8A020;
+      border-radius: 12px;
+      padding: 28px;
+    }
+
+    .theme-preview {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 16px;
+    }
+
+    .theme-btn {
+      padding: 10px 24px;
+      border-radius: 6px;
+      font-family: 'Outfit', sans-serif;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: default;
+    }
+
+    .btn-primary {
+      background: #E8A020;
+      color: #0D0A07;
+    }
+
+    .btn-secondary {
+      background: transparent;
+      border: 1px solid #BF3A2B;
+      color: #BF3A2B;
+    }
+
+    .theme-badge {
+      padding: 4px 12px;
+      border-radius: 100px;
+      background: #2E1F0A;
+      border: 1px solid #3A2810;
+      font-size: 12px;
+      color: #9A7A50;
+      font-family: 'JetBrains Mono', monospace;
+    }
+  </style>
+</head>
+
+<body>
+
+  <h1>Brand Card — Cinematic Sites</h1>
+
+  <div class="grid">
+
+    <!-- Identity -->
+    <div class="card">
+      <div class="card-title">Identidad</div>
+      <div class="brand-name">La Calle 58</div>
+      <div class="brand-sub">Cocina Venezolana</div>
+      <div class="brand-tagline">Restaurante venezolano en el corazón de Alcântara, Lisboa. Arepas, cachapas y el sabor
+        de Venezuela a cada paso.</div>
+    </div>
+
+    <!-- Colors -->
+    <div class="card">
+      <div class="card-title">Paleta de colores</div>
+      <div class="swatches">
+        <div class="swatch">
+          <div class="swatch-block" style="background:#0D0A07;border:1px solid #2E1F0A"></div>
+          <div class="swatch-info">
+            <div class="swatch-name">Noche profunda</div>
+            <div class="swatch-hex">#0D0A07</div>
+            <div class="swatch-use">--bg · Fondo principal</div>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:#E8A020"></div>
+          <div class="swatch-info">
+            <div class="swatch-name">Maíz dorado</div>
+            <div class="swatch-hex">#E8A020</div>
+            <div class="swatch-use">--accent · CTAs, precios, acentos</div>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:#BF3A2B"></div>
+          <div class="swatch-info">
+            <div class="swatch-name">Ají rojo</div>
+            <div class="swatch-hex">#BF3A2B</div>
+            <div class="swatch-use">--accent2 · Highlights, badges</div>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:#F5EDD6"></div>
+          <div class="swatch-info">
+            <div class="swatch-name">Crema</div>
+            <div class="swatch-hex">#F5EDD6</div>
+            <div class="swatch-use">--text · Texto principal</div>
+          </div>
+        </div>
+        <div class="swatch">
+          <div class="swatch-block" style="background:#1A1208"></div>
+          <div class="swatch-info">
+            <div class="swatch-name">Carbón cálido</div>
+            <div class="swatch-hex">#1A1208</div>
+            <div class="swatch-use">--card · Cards, nav sólido</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Typography -->
+    <div class="card">
+      <div class="card-title">Tipografía</div>
+      <div class="type-sample">
+        <div class="type-label">Display / Titulares</div>
+        <div class="type-display">La Calle 58</div>
+        <div class="type-display-italic">sabor de Venezuela</div>
+      </div>
+      <div class="type-sample">
+        <div class="type-label">Body / Párrafos</div>
+        <div class="type-body">Arepas de maíz rellenas con lo mejor de la cocina criolla venezolana.</div>
+      </div>
+      <div class="type-sample">
+        <div class="type-label">Labels / Precios</div>
+        <div class="type-mono">Cachapa Llanera · €24</div>
+      </div>
+    </div>
+
+    <!-- Key Copy -->
+    <div class="card">
+      <div class="card-title">Copy clave</div>
+      <div class="copy-item">
+        <div class="copy-label">Tagline</div>
+        <div class="copy-value">El sabor de Venezuela en Lisboa</div>
+      </div>
+      <div class="copy-item">
+        <div class="copy-label">Subtítulo hero</div>
+        <div class="copy-value">Arepas · Cachapas · Clásicos — Alcântara, Lisboa</div>
+      </div>
+      <div class="copy-item">
+        <div class="copy-label">Dirección</div>
+        <div class="copy-value">Calçada da Tapada 15, Alcântara · 1300-544 Lisboa</div>
+      </div>
+      <div class="copy-item">
+        <div class="copy-label">Horario</div>
+        <div class="copy-value">Mar–Vie 17h–23h &nbsp;·&nbsp; Sáb 10:30–14:30 & 17h–23h</div>
+      </div>
+      <div class="copy-item">
+        <div class="copy-label">Instagram</div>
+        <div class="copy-value"><a href="#">@lacalle58.pt</a></div>
+      </div>
+      <div class="copy-item">
+        <div class="copy-label">CTA principal</div>
+        <div class="copy-value">Ver el Menú</div>
+      </div>
+    </div>
+
+    <!-- Menu Highlights -->
+    <div class="card" style="grid-column: 1 / -1">
+      <div class="card-title">Estrellas del menú</div>
+      <div class="menu-grid">
+        <div class="menu-item">
+          <div class="menu-cat">Petisco</div>
+          <div class="menu-name">Tequeños</div>
+          <div class="menu-price">€7</div>
+        </div>
+        <div class="menu-item">
+          <div class="menu-cat">Arepa</div>
+          <div class="menu-name">Pabellón</div>
+          <div class="menu-price">€11</div>
+        </div>
+        <div class="menu-item">
+          <div class="menu-cat">Cachapa estrella</div>
+          <div class="menu-name">Cachapa Llanera</div>
+          <div class="menu-price">€24</div>
+        </div>
+        <div class="menu-item">
+          <div class="menu-cat">Clásico</div>
+          <div class="menu-name">Pabellón Criollo</div>
+          <div class="menu-price">€15</div>
+        </div>
+        <div class="menu-item">
+          <div class="menu-cat">Pepito</div>
+          <div class="menu-name">Pepito Gratinado</div>
+          <div class="menu-price">€19.50</div>
+        </div>
+        <div class="menu-item">
+          <div class="menu-cat">Postre</div>
+          <div class="menu-name">Tres Leches</div>
+          <div class="menu-price">€5</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Theme Recommendation -->
+    <div class="theme-box">
+      <div class="card-title">Tema recomendado</div>
+      <div style="font-size:15px;color:#BBA882;line-height:1.7;max-width:600px;">
+        <strong style="color:#F5EDD6">Dark · Cálido · Venezolano.</strong> Fondo casi negro con tono cálido (#0D0A07),
+        tipografía Playfair Display para los títulos (elegancia latina), acentos dorados (#E8A020) que evocan el maíz y
+        las cachapas. Rojo ají (#BF3A2B) para detalles. Módulos recomendados: <strong style="color:#E8A020">Kinetic
+          Marquee</strong> (AREPAS · CACHAPAS · PEPITOS), <strong style="color:#E8A020">Spotlight Border Cards</strong>
+        (categorías del menú), <strong style="color:#E8A020">Odometer Counter</strong> (platos, años), <strong
+          style="color:#E8A020">Color Shift</strong> (transición entre secciones).
+      </div>
+      <div class="theme-preview">
+        <div class="theme-btn btn-primary">Ver el Menú</div>
+        <div class="theme-btn btn-secondary">Reservar Mesa</div>
+        <div class="theme-badge">Playfair Display</div>
+        <div class="theme-badge">Outfit</div>
+        <div class="theme-badge">JetBrains Mono</div>
+        <div class="theme-badge">Dark theme</div>
+      </div>
+    </div>
+
+  </div>
+</body>
+
+</html>
