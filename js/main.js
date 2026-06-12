@@ -170,20 +170,42 @@
 
   if (isMobile) {
     /**
-     * Mobile: plain scroll listener — no GSAP ticker overhead.
-     * heroH/viewH/heroScrollRange cached outside handler to avoid layout thrash on every event.
-     * visualViewport.height used so iOS browser-chrome hide/show doesn't resize the canvas mid-scroll.
+     * Mobile: scroll sets a target frame; a rAF lerp loop eases the displayed
+     * frame toward it (equivalent of GSAP scrub 0.3 on desktop). Without this,
+     * a fast swipe jumps 10+ frames at once and the animation looks choppy.
+     * heroH/viewH/heroScrollRange cached outside handler to avoid layout thrash.
      */
     var heroScrollEl    = document.querySelector('.hero');
     var heroH           = heroScrollEl.offsetHeight;
     var viewH           = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
     var heroScrollRange = heroH - viewH;
 
-    function updateMobileHero() {
-      var idx = Math.round(Math.min(1, Math.max(0, window.scrollY / heroScrollRange)) * (TOTAL - 1));
+    var targetFrame = 0;
+    var floatFrame  = 0;
+    var lerpRunning = false;
+
+    function lerpLoop() {
+      var diff = targetFrame - floatFrame;
+      if (Math.abs(diff) < 0.05) {
+        floatFrame  = targetFrame;
+        lerpRunning = false;
+      } else {
+        floatFrame += diff * 0.22;
+        requestAnimationFrame(lerpLoop);
+      }
+      var idx = Math.round(floatFrame);
       if (idx !== currentFrame) {
         currentFrame = idx;
-        scheduleDrawFrame(idx);
+        drawFrame(idx);
+      }
+    }
+
+    function updateMobileHero() {
+      if (window.scrollY > heroH) return; // past the hero — nothing to draw
+      targetFrame = Math.min(1, Math.max(0, window.scrollY / heroScrollRange)) * (TOTAL - 1);
+      if (!lerpRunning) {
+        lerpRunning = true;
+        requestAnimationFrame(lerpLoop);
       }
     }
     window.addEventListener('scroll', updateMobileHero, { passive: true });
@@ -222,22 +244,35 @@
   var heroContentEl = document.querySelector('.hero-content');
   var scrollHintEl  = document.querySelector('.scroll-hint');
 
+  // Cached — reading offsetHeight inside a scroll handler forces a reflow per event
+  var heroFadeH = heroEl.offsetHeight;
+  window.addEventListener('resize', function () { heroFadeH = heroEl.offsetHeight; });
+
+  var lastFadeProg = -1;
+  var lastHintProg = -1;
+
   function updateHeroFade() {
-    var heroH = heroEl.offsetHeight;
-    var s     = window.scrollY;
+    var s = window.scrollY;
+    if (s > heroFadeH * 0.4 && lastFadeProg === 1 && lastHintProg === 1) return; // past fade range, already faded out
 
     // .hero-content fades from opacity 1→0 between 10% and 35% of hero height
-    var fadeStart = heroH * 0.10;
-    var fadeEnd   = heroH * 0.35;
+    var fadeStart = heroFadeH * 0.10;
+    var fadeEnd   = heroFadeH * 0.35;
     var progress  = Math.min(1, Math.max(0, (s - fadeStart) / (fadeEnd - fadeStart)));
-    heroContentEl.style.opacity   = (1 - progress).toFixed(4);
-    heroContentEl.style.transform = 'translateY(' + (-55 * progress).toFixed(2) + 'px)';
+    if (progress !== lastFadeProg) {
+      lastFadeProg = progress;
+      heroContentEl.style.opacity   = (1 - progress).toFixed(4);
+      heroContentEl.style.transform = 'translateY(' + (-55 * progress).toFixed(2) + 'px)';
+    }
 
     // .scroll-hint fades from opacity 1→0 between 4% and 14%
-    var hStart = heroH * 0.04;
-    var hEnd   = heroH * 0.14;
+    var hStart = heroFadeH * 0.04;
+    var hEnd   = heroFadeH * 0.14;
     var hProg  = Math.min(1, Math.max(0, (s - hStart) / (hEnd - hStart)));
-    scrollHintEl.style.opacity = (1 - hProg).toFixed(4);
+    if (hProg !== lastHintProg) {
+      lastHintProg = hProg;
+      scrollHintEl.style.opacity = (1 - hProg).toFixed(4);
+    }
   }
 
   // Run once on load so refresh-at-bottom → scroll-to-top always shows hero text
