@@ -51,7 +51,7 @@ body {
   font-family: 'Outfit', sans-serif;
   line-height: 1.6;
   overflow-x: hidden;
-  transition: background 0.9s ease, color 0.9s ease;
+  transition: background 0.9s ease;
 }
 
 a {
@@ -304,10 +304,27 @@ nav.scrolled {
 
   nav {
     padding: 16px 20px;
+    /* Eliminar backdrop-filter en mobile — el canvas se redibuja 60/s y cada blur-pass
+       del nav re-muestrea toda la franja superior en cada frame. Con fondo más opaco
+       el resultado visual es prácticamente idéntico. */
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgba(17, 17, 17, 0.96);
   }
 
   nav.scrolled {
     padding: 12px 20px;
+  }
+
+  /* Eliminar backdrop-filter de los pills del hero en mobile.
+     Estos elementos tienen opacity animada encima de un canvas en constante cambio:
+     backdrop-filter + opacity-transition + canvas-update = 3 GPU passes por frame.
+     El fondo semi-transparente rgba mantiene la legibilidad sin el coste. */
+  .hero .hero-sub,
+  .hero .hero-loc,
+  .hero .scroll-hint {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }
 

@@ -24,14 +24,8 @@
 
 <body>
 
-  <!-- Noise texture overlay -->
-  <svg class="noise-layer" viewBox="0 0 200 200" preserveAspectRatio="xMidYMid slice" aria-hidden="true">
-    <filter id="nz">
-      <feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" />
-      <feColorMatrix type="saturate" values="0" />
-    </filter>
-    <rect width="100%" height="100%" filter="url(#nz)" />
-  </svg>
+  <!-- Noise texture overlay (pre-baked by JS — no live SVG filter) -->
+  <div class="noise-layer" aria-hidden="true"></div>
 
   <!-- Loader -->
   <div id="loader" role="progressbar" aria-label="Cargando">

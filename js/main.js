@@ -2,21 +2,52 @@
  * La Calle 58 — Main Script
  *
  * Modules:
- *   1. Canvas Hero        — scroll-scrub via GSAP (mobile: 61 frames @ 640×360, desktop: 121 @ 1280×720)
- *   2. Hero Text Fade     — plain scroll listener (immune to GSAP refresh bugs)
- *   3. Navigation         — scroll state + hamburger menu
- *   4. Kinetic Marquee    — requestAnimationFrame loop, scroll-velocity reactive
- *   5. Spotlight Cards    — CSS custom-property cursor tracking
- *   6. Odometer Counter   — digit-strip animation on scroll enter
- *   7. Color Shift        — body background transition per section
+ *   0. Noise Pre-bake    — generate static PNG noise, replacing live SVG feTurbulence
+ *   1. Canvas Hero       — scroll-scrub via GSAP (mobile: 61 frames @ 640×360, desktop: 121 @ 1280×720)
+ *   2. Hero Text Fade    — integrated into mobile rAF loop; passive scroll listener on desktop
+ *   3. Navigation        — scroll state + hamburger menu
+ *   4. Kinetic Marquee   — rAF loop, paused by IntersectionObserver when offscreen
+ *   5. Spotlight Cards   — CSS custom-property cursor tracking (cached rects)
+ *   6. Odometer Counter  — digit-strip animation on scroll enter
+ *   7. Color Shift       — body background transition per section
  *   8. Fade-up Animations — GSAP ScrollTrigger on .fade-up elements
- *   9. Magnetic Button    — subtle cursor-pull on .btn-primary hover
+ *   9. Magnetic Button   — subtle cursor-pull on .btn-primary hover
  */
 
 (function () {
   'use strict';
 
   gsap.registerPlugin(ScrollTrigger);
+
+
+  /* ─────────────────────────────────────────────────────
+     0. NOISE PRE-BAKE
+     The SVG <feTurbulence> filter is rasterized in software on every initial render
+     and on every viewport resize. We replace it with a one-time canvas-generated
+     noise PNG tiled as background-image. After this runs the filter never executes again.
+  ───────────────────────────────────────────────────── */
+
+  (function bakeNoise() {
+    var el = document.querySelector('.noise-layer');
+    if (!el) return;
+    try {
+      var nc = document.createElement('canvas');
+      nc.width = nc.height = 256;
+      var ncx = nc.getContext('2d');
+      var id = ncx.createImageData(256, 256);
+      var px = id.data;
+      for (var i = 0, len = px.length; i < len; i += 4) {
+        var v = (Math.random() * 255) | 0;
+        px[i] = px[i + 1] = px[i + 2] = v;
+        px[i + 3] = 255;
+      }
+      ncx.putImageData(id, 0, 0);
+      el.style.backgroundImage = 'url(' + nc.toDataURL('image/png') + ')';
+      el.style.backgroundSize = '256px 256px';
+      el.style.backgroundRepeat = 'repeat';
+    } catch (e) { /* secure-context block — noise layer simply shows nothing */ }
+  })();
+
 
   /* ─────────────────────────────────────────────────────
      1. CANVAS HERO — scroll-driven frame sequence
@@ -25,43 +56,83 @@
   ───────────────────────────────────────────────────── */
 
   var isMobile = window.innerWidth < 768;
-  var TOTAL = isMobile ? 61 : 121;
-  var FOLDER = isMobile ? 'assets/frames-mobile' : 'assets/frames';
+  var TOTAL    = isMobile ? 61 : 121;
+  var FOLDER   = isMobile ? 'assets/frames-mobile' : 'assets/frames';
 
   var canvas = document.getElementById('heroCanvas');
-  var ctx = canvas.getContext('2d');
+  // alpha:false → canvas is opaque; drawImage becomes a straight blit with no alpha-blend pass.
+  // ~15-25% faster per draw on mobile GPU.
+  var ctx = canvas.getContext('2d', { alpha: false });
 
-  // GPU layer promotion — faster compositing on mobile
-  canvas.style.transform = 'translateZ(0)';
+  // Cover-fit geometry — computed once, cached here, updated only on resize.
+  // Without this cache, r/dw/dh/ox/oy are recalculated on every drawFrame call (60×/s).
+  var drawGeom = { dw: 0, dh: 0, ox: 0, oy: 0 };
 
-  // Mobile frames are 640×360 — not enough resolution to benefit from 2x DPR on portrait.
-  // DPR 1 makes the canvas 4x cheaper to draw (half width × half height).
+  // Mobile: DPR=1 → canvas pixels = logical pixels.
+  // 640×360 mobile frames at DPR=1 still fill the screen with cover-fit;
+  // DPR=2 would make the canvas 4× larger (half-width × half-height cost) with no visible gain.
   var DPR = 1;
 
-  var frames = new Array(TOTAL);
-  var imagesLoaded = 0; // counts raw Image onload
-  var bitmapsReady = 0; // counts createImageBitmap conversions
-  var currentFrame = 0;
+  var frames        = new Array(TOTAL);
+  var imagesLoaded  = 0;
+  var bitmapsReady  = 0;
+  var currentFrame  = 0;
 
-  /** Size canvas to viewport, accounting for device pixel ratio on mobile.
-   *  Uses visualViewport.height on mobile to avoid iOS browser-chrome resize events. */
+  // Cache loader elements — queried by ID on every bitmap load in the hot path
+  var loaderFill  = document.getElementById('loaderFill');
+  var loaderCount = document.getElementById('loaderCount');
+
+  // Hero fade vars — declared here so the consolidated resize handler can reach them
+  var heroEl        = document.querySelector('.hero');
+  var heroContentEl = document.querySelector('.hero-content');
+  var scrollHintEl  = document.querySelector('.scroll-hint');
+  var heroFadeH     = heroEl.offsetHeight;
+  var lastFadeProg  = -1;
+  var lastHintProg  = -1;
+
+  // Mobile-only scroll vars — hoisted so resize handler can update them
+  var heroScrollEl   = isMobile ? heroEl : null;
+  var heroH          = isMobile ? heroEl.offsetHeight : 0;
+  var viewH          = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+  var heroScrollRange = isMobile ? heroH - viewH : 0;
+
+  function updateDrawGeom() {
+    // Use frame 0 for source dimensions; fall back to first available frame
+    var src = frames[0];
+    if (!src) {
+      for (var fi = 0; fi < frames.length; fi++) {
+        if (frames[fi]) { src = frames[fi]; break; }
+      }
+    }
+    if (!src) return;
+    var srcW = src.naturalWidth  || src.width;
+    var srcH = src.naturalHeight || src.height;
+    if (!srcW || !srcH) return;
+    var r      = Math.max(canvas.width / srcW, canvas.height / srcH);
+    drawGeom.dw = srcW * r;
+    drawGeom.dh = srcH * r;
+    drawGeom.ox = (canvas.width  - drawGeom.dw) / 2;
+    drawGeom.oy = (canvas.height - drawGeom.dh) / 2;
+  }
+
   function resizeCanvas() {
     var w = window.innerWidth;
     var h = (isMobile && window.visualViewport) ? window.visualViewport.height : window.innerHeight;
-    canvas.width = w * DPR;
+    canvas.width  = w * DPR;
     canvas.height = h * DPR;
-    canvas.style.width = w + 'px';
+    canvas.style.width  = w + 'px';
     canvas.style.height = h + 'px';
-    // NO ctx.scale() — canvas.width/height are already in physical pixels.
+    updateDrawGeom();
     if (bitmapsReady > 0) drawFrame(currentFrame);
   }
 
-  // Single resize listener — recalculates canvas + mobile scroll cache + breakpoint check.
+  // Single consolidated resize handler (was two separate listeners before)
   window.addEventListener('resize', function () {
     resizeCanvas();
+    heroFadeH = heroEl.offsetHeight;
     if (isMobile) {
-      heroH = heroScrollEl.offsetHeight;
-      viewH = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
+      heroH          = heroScrollEl.offsetHeight;
+      viewH          = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
       heroScrollRange = heroH - viewH;
     }
     var nowMobile = window.innerWidth < 768;
@@ -69,20 +140,14 @@
   });
   resizeCanvas();
 
-  /** Cover-fit draw — works with both HTMLImageElement and ImageBitmap */
+  /** Cover-fit draw — uses cached geometry.
+   *  clearRect is intentionally absent: cover-fit guarantees the image always fills
+   *  the full canvas (r = max of both axis ratios), so drawImage completely overwrites
+   *  the previous frame with no transparent gaps. */
   function drawFrame(idx) {
     var src = frames[idx];
-    if (!src) return;
-
-    var srcW = src.naturalWidth || src.width;
-    var srcH = src.naturalHeight || src.height;
-    if (!srcW || !srcH) return;
-
-    var r = Math.max(canvas.width / srcW, canvas.height / srcH);
-    var dw = srcW * r;
-    var dh = srcH * r;
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    ctx.drawImage(src, (canvas.width - dw) / 2, (canvas.height - dh) / 2, dw, dh);
+    if (!src || !drawGeom.dw) return;
+    ctx.drawImage(src, drawGeom.ox, drawGeom.oy, drawGeom.dw, drawGeom.dh);
   }
 
   function dismissLoader() {
@@ -91,11 +156,9 @@
     setTimeout(function () { loader.style.display = 'none'; }, 700);
   }
 
-  /** Shared completion check — called by onFrameReady and onerror alike. */
   function checkAllReady() {
     if (bitmapsReady < TOTAL) return;
 
-    // No frame drew successfully — fall back to static hero image
     if (!frames[0]) {
       var fallback = new Image();
       fallback.onload = function () {
@@ -110,27 +173,20 @@
     }
 
     resizeCanvas();
-    drawFrame(0);
     requestAnimationFrame(function () {
-      drawFrame(0); // second draw after first paint cycle (CDN race-condition fix)
+      drawFrame(0); // second draw after first paint cycle (CDN race-condition guard)
       requestAnimationFrame(dismissLoader);
     });
   }
 
-  /**
-   * Called once per frame after it's fully ready (bitmap converted or fallback set).
-   * Loader dismissal only fires when ALL bitmaps are ready — prevents blank canvas flash.
-   */
   function onFrameReady(n) {
     bitmapsReady++;
-
-    // Update loader progress based on bitmap-ready count (more accurate than image load)
     var pct = Math.round(bitmapsReady / TOTAL * 100);
-    document.getElementById('loaderFill').style.width = pct + '%';
-    document.getElementById('loaderCount').textContent = pct + '%';
+    loaderFill.style.width  = pct + '%';
+    loaderCount.textContent = pct + '%';
 
-    // Draw frame 0 as soon as it's ready
     if (n === 0) {
+      updateDrawGeom();
       currentFrame = 0;
       drawFrame(0);
     }
@@ -138,7 +194,6 @@
     checkAllReady();
   }
 
-  /** Preload all frames, converting to ImageBitmap for zero-cost GPU draws */
   for (var i = 0; i < TOTAL; i++) {
     (function (n) {
       var img = new Image();
@@ -146,17 +201,14 @@
       img.onload = function () {
         imagesLoaded++;
         if (window.createImageBitmap) {
-          // Pre-decode JPEG → GPU-ready bitmap; drawImage becomes a fast blit
           createImageBitmap(img).then(function (bitmap) {
             frames[n] = bitmap;
             onFrameReady(n);
           }).catch(function () {
-            // createImageBitmap failed for this frame — fall back to raw Image
             frames[n] = img;
             onFrameReady(n);
           });
         } else {
-          // Browser doesn't support createImageBitmap — use Image directly
           frames[n] = img;
           onFrameReady(n);
         }
@@ -172,7 +224,7 @@
     })(i);
   }
 
-  // Safety valve — if frames stall (slow CDN, missing folder), force loader dismissal after 10 s
+  // Safety valve: if frames stall (slow CDN, missing folder), force loader out after 10 s
   setTimeout(function () {
     if (bitmapsReady < TOTAL) {
       bitmapsReady = TOTAL;
@@ -180,58 +232,71 @@
     }
   }, 10000);
 
-  /**
-   * Throttle draws to rAF — canvas updates at most once per 16ms regardless
-   * of how many scroll events fire in that window (critical for iOS momentum scroll).
-   */
-  var rafPending = false;
-  var pendingIdx = 0;
 
-  function scheduleDrawFrame(idx) {
-    pendingIdx = idx;
-    if (!rafPending) {
-      rafPending = true;
-      requestAnimationFrame(function () {
-        rafPending = false;
-        drawFrame(pendingIdx);
-      });
+  /* ─────────────────────────────────────────────────────
+     2. HERO TEXT FADE — shared between mobile rAF and desktop scroll listener
+  ───────────────────────────────────────────────────── */
+
+  // Accepts scrollY as argument so the mobile rAF loop can pass its already-read value
+  // without a second window.scrollY read per frame.
+  function updateHeroFade(s) {
+    if (s > heroFadeH * 0.4 && lastFadeProg === 1 && lastHintProg === 1) return;
+
+    var fadeStart = heroFadeH * 0.10;
+    var fadeEnd   = heroFadeH * 0.35;
+    var progress  = Math.min(1, Math.max(0, (s - fadeStart) / (fadeEnd - fadeStart)));
+    if (progress !== lastFadeProg) {
+      lastFadeProg = progress;
+      heroContentEl.style.opacity   = (1 - progress).toFixed(4);
+      heroContentEl.style.transform = 'translateY(' + (-55 * progress).toFixed(2) + 'px)';
+    }
+
+    var hStart = heroFadeH * 0.04;
+    var hEnd   = heroFadeH * 0.14;
+    var hProg  = Math.min(1, Math.max(0, (s - hStart) / (hEnd - hStart)));
+    if (hProg !== lastHintProg) {
+      lastHintProg = hProg;
+      scrollHintEl.style.opacity = (1 - hProg).toFixed(4);
     }
   }
 
-  if (isMobile) {
-    /**
-     * Mobile: a rAF loop reads window.scrollY directly each frame instead of
-     * relying on scroll events. iOS batches scroll events asynchronously, causing
-     * targetFrame to jump in bursts — reading in rAF syncs the update to the
-     * display refresh cycle. IntersectionObserver pauses the loop when the hero
-     * is fully offscreen so it doesn't run on every tick for the rest of the page.
-     */
-    var heroScrollEl = document.querySelector('.hero');
-    var heroH = heroScrollEl.offsetHeight;
-    var viewH = (window.visualViewport ? window.visualViewport.height : window.innerHeight);
-    var heroScrollRange = heroH - viewH;
+  // Initialise on load so refresh-at-bottom shows correct opacity immediately
+  updateHeroFade(window.scrollY);
 
-    var targetFrame = 0;
-    var floatFrame = 0;
+
+  /* ─────────────────────────────────────────────────────
+     SCROLL DRIVER — mobile vs desktop
+  ───────────────────────────────────────────────────── */
+
+  if (isMobile) {
+    /* Mobile rAF loop reads window.scrollY once per frame and drives both the canvas
+       scrub and the hero text fade. Combining both into one loop:
+         • Eliminates the separate passive scroll listener on mobile
+         • Reads scrollY exactly once per frame instead of twice
+         • Keeps both animations in sync with the display refresh cycle
+
+       Lerp removed: on iOS, scroll events are already async-delayed; adding a second
+       lerp layer (floatFrame += diff*0.3) compounds the perceived lag. Snapping to the
+       exact frame for the current scroll position feels more responsive. */
+
     var heroRafId = null;
 
     function heroRafLoop() {
-      var s = window.scrollY;
-      targetFrame = Math.min(1, Math.max(0, s / heroScrollRange)) * (TOTAL - 1);
-      var diff = targetFrame - floatFrame;
-      if (Math.abs(diff) < 0.05) {
-        floatFrame = targetFrame;
-      } else {
-        floatFrame += diff * 0.3;
-      }
-      var idx = Math.round(floatFrame);
+      var s   = window.scrollY;
+      var idx = Math.round(Math.min(1, Math.max(0, s / heroScrollRange)) * (TOTAL - 1));
+
       if (idx !== currentFrame && frames[idx]) {
         currentFrame = idx;
         drawFrame(idx);
       }
+
+      updateHeroFade(s);
+
       heroRafId = requestAnimationFrame(heroRafLoop);
     }
 
+    // IntersectionObserver pauses the loop when the hero section is fully offscreen —
+    // essential so the rAF doesn't consume CPU/GPU for the rest of the page.
     new IntersectionObserver(function (entries) {
       if (entries[0].isIntersecting) {
         if (!heroRafId) heroRafId = requestAnimationFrame(heroRafLoop);
@@ -239,14 +304,14 @@
         cancelAnimationFrame(heroRafId);
         heroRafId = null;
       }
-    }, { threshold: 0 }).observe(heroScrollEl);
+    }, { threshold: 0 }).observe(heroEl);
 
     heroRafId = requestAnimationFrame(heroRafLoop);
 
   } else {
-    /**
-     * Desktop: GSAP scrub with cinematic 0.3s smoothing.
-     */
+    /* Desktop: GSAP scrub. drawFrame called directly inside onUpdate — we are already
+       inside GSAP's own rAF tick, so calling scheduleDrawFrame (which queued a second
+       rAF) added 1 frame of unnecessary latency. */
     gsap.to({ f: 0 }, {
       f: TOTAL - 1,
       snap: 'f',
@@ -261,70 +326,27 @@
         var idx = Math.round(this.targets()[0].f);
         if (idx !== currentFrame) {
           currentFrame = idx;
-          scheduleDrawFrame(idx);
+          drawFrame(idx);
         }
       }
     });
+
+    // Desktop keeps the scroll listener for hero fade (GSAP handles the canvas separately)
+    window.addEventListener('scroll', function () { updateHeroFade(window.scrollY); }, { passive: true });
   }
-
-
-  /* ─────────────────────────────────────────────────────
-     2. HERO TEXT FADE — plain scroll listener
-     (Replaces GSAP scrub to avoid opacity:0 on page-refresh-at-bottom bug)
-  ───────────────────────────────────────────────────── */
-
-  var heroEl = document.querySelector('.hero');
-  var heroContentEl = document.querySelector('.hero-content');
-  var scrollHintEl = document.querySelector('.scroll-hint');
-
-  // Cached — reading offsetHeight inside a scroll handler forces a reflow per event
-  var heroFadeH = heroEl.offsetHeight;
-  window.addEventListener('resize', function () { heroFadeH = heroEl.offsetHeight; });
-
-  var lastFadeProg = -1;
-  var lastHintProg = -1;
-
-  function updateHeroFade() {
-    var s = window.scrollY;
-    if (s > heroFadeH * 0.4 && lastFadeProg === 1 && lastHintProg === 1) return; // past fade range, already faded out
-
-    // .hero-content fades from opacity 1→0 between 10% and 35% of hero height
-    var fadeStart = heroFadeH * 0.10;
-    var fadeEnd = heroFadeH * 0.35;
-    var progress = Math.min(1, Math.max(0, (s - fadeStart) / (fadeEnd - fadeStart)));
-    if (progress !== lastFadeProg) {
-      lastFadeProg = progress;
-      heroContentEl.style.opacity = (1 - progress).toFixed(4);
-      heroContentEl.style.transform = 'translateY(' + (-55 * progress).toFixed(2) + 'px)';
-    }
-
-    // .scroll-hint fades from opacity 1→0 between 4% and 14%
-    var hStart = heroFadeH * 0.04;
-    var hEnd = heroFadeH * 0.14;
-    var hProg = Math.min(1, Math.max(0, (s - hStart) / (hEnd - hStart)));
-    if (hProg !== lastHintProg) {
-      lastHintProg = hProg;
-      scrollHintEl.style.opacity = (1 - hProg).toFixed(4);
-    }
-  }
-
-  // Run once on load so refresh-at-bottom → scroll-to-top always shows hero text
-  updateHeroFade();
-  window.addEventListener('scroll', updateHeroFade, { passive: true });
 
 
   /* ─────────────────────────────────────────────────────
      3. NAVIGATION — scroll state + hamburger menu
   ───────────────────────────────────────────────────── */
 
-  var mainNav = document.getElementById('mainNav');
-  var burger = document.getElementById('navBurger');
+  var mainNav  = document.getElementById('mainNav');
+  var burger   = document.getElementById('navBurger');
   var mobileNav = document.getElementById('navMobile');
 
-  // Solid navbar after 60px of scroll
   ScrollTrigger.create({
     start: '60px top',
-    onEnter: function () { mainNav.classList.add('scrolled'); },
+    onEnter:     function () { mainNav.classList.add('scrolled'); },
     onLeaveBack: function () { mainNav.classList.remove('scrolled'); }
   });
 
@@ -333,11 +355,10 @@
     mobileNav.classList.add('open');
     mobileNav.setAttribute('aria-hidden', 'false');
     burger.setAttribute('aria-expanded', 'true');
-    mainNav.style.zIndex = '106'; // sit above overlay (z-index 105) so X stays visible
+    mainNav.style.zIndex = '106';
     document.body.style.overflow = 'hidden';
   }
 
-  // Exposed globally so inline onclick="closeMobileNav()" in the HTML works
   window.closeMobileNav = function () {
     burger.classList.remove('open');
     mobileNav.classList.remove('open');
@@ -358,46 +379,100 @@
 
   /* ─────────────────────────────────────────────────────
      4. KINETIC MARQUEE — scroll-velocity reactive
+     IntersectionObserver pauses the rAF loop when the band is offscreen.
+     document.fonts.ready replaces the unreliable setTimeout(150) for width measurement.
   ───────────────────────────────────────────────────── */
 
-  var row = document.getElementById('marqueeRow');
+  var row     = document.getElementById('marqueeRow');
   var content = document.getElementById('marqueeContent');
-  var clone = content.cloneNode(true);
-  row.appendChild(clone); // seamless loop via duplicate
+  var clone   = content.cloneNode(true);
+  row.appendChild(clone);
 
   var scrollVel = 0;
   ScrollTrigger.create({
     onUpdate: function (s) { scrollVel = Math.abs(s.getVelocity()); }
   });
 
-  var baseSpd = 55;
-  var marqX = 0;
-  var marqW = 0;
+  var baseSpd   = 55;
+  var marqX     = 0;
+  var marqW     = 0;
+  var marqRafId = null;
+  var marqVisible = false;
 
-  // Measure after fonts have loaded to get accurate width
-  setTimeout(function () {
-    marqW = content.offsetWidth;
+  function startMarquee() {
+    if (marqRafId || !marqW) return; // guard: don't start if already running or width unknown
     (function tick() {
       var spd = (baseSpd + scrollVel * 0.1) / 60;
       marqX -= spd;
       if (marqX <= -marqW) marqX += marqW;
       row.style.transform = 'translateX(' + marqX + 'px)';
-      requestAnimationFrame(tick);
+      marqRafId = requestAnimationFrame(tick);
     })();
-  }, 150);
+  }
+
+  function stopMarquee() {
+    cancelAnimationFrame(marqRafId);
+    marqRafId = null;
+  }
+
+  // rootMargin:200px means we start the loop slightly before the band enters the viewport
+  new IntersectionObserver(function (entries) {
+    if (entries[0].isIntersecting) {
+      marqVisible = true;
+      startMarquee();
+    } else {
+      marqVisible = false;
+      stopMarquee();
+    }
+  }, { rootMargin: '200px 0px' }).observe(row.parentElement);
+
+  // Wait for fonts before measuring — offsetWidth is wrong if custom fonts haven't loaded
+  (document.fonts ? document.fonts.ready : Promise.resolve()).then(function () {
+    marqW = content.offsetWidth;
+    if (marqVisible) startMarquee();
+  });
 
 
   /* ─────────────────────────────────────────────────────
      5. SPOTLIGHT CARDS — cursor-tracking CSS vars
+     Optimised: cache card positions relative to the grid container.
+     On mousemove: 1 getBoundingClientRect (grid only) + arithmetic per card.
+     Previously: N getBoundingClientRect calls (one per card) per mousemove.
   ───────────────────────────────────────────────────── */
 
-  var spotGrid = document.getElementById('spotGrid');
-  spotGrid.addEventListener('mousemove', function (e) {
-    spotGrid.querySelectorAll('.spot-card').forEach(function (card) {
-      var rect = card.getBoundingClientRect();
-      card.style.setProperty('--mx', (e.clientX - rect.left) + 'px');
-      card.style.setProperty('--my', (e.clientY - rect.top) + 'px');
+  var spotGrid  = document.getElementById('spotGrid');
+  var spotCards = Array.from(spotGrid.querySelectorAll('.spot-card'));
+
+  // Store each card's offset from the top-left of the spotGrid
+  // These are stable as long as the layout doesn't change (i.e. until resize)
+  var relativeRects = [];
+
+  function cacheRelativeRects() {
+    var gridRect = spotGrid.getBoundingClientRect();
+    relativeRects = spotCards.map(function (card) {
+      var r = card.getBoundingClientRect();
+      return { left: r.left - gridRect.left, top: r.top - gridRect.top };
     });
+  }
+
+  // Lazy-init on first mousemove; invalidate on resize
+  var relRectsDirty = true;
+  window.addEventListener('resize', function () { relRectsDirty = true; }, { passive: true });
+
+  spotGrid.addEventListener('mousemove', function (e) {
+    if (relRectsDirty) {
+      cacheRelativeRects();
+      relRectsDirty = false;
+    }
+    // One BCR for the grid to get current viewport position (changes as page scrolls)
+    var gr = spotGrid.getBoundingClientRect();
+    var gx = e.clientX - gr.left;
+    var gy = e.clientY - gr.top;
+    for (var ci = 0; ci < spotCards.length; ci++) {
+      var rc = relativeRects[ci];
+      spotCards[ci].style.setProperty('--mx', (gx - rc.left) + 'px');
+      spotCards[ci].style.setProperty('--my', (gy - rc.top)  + 'px');
+    }
   });
 
 
@@ -406,12 +481,11 @@
   ───────────────────────────────────────────────────── */
 
   document.querySelectorAll('.odometer').forEach(function (odo) {
-    var raw = odo.dataset.value;
+    var raw    = odo.dataset.value;
     var suffix = odo.dataset.suffix || '';
     var digits = raw.split('');
     odo.innerHTML = '';
 
-    // Build one scrollable strip per digit
     digits.forEach(function (d) {
       var digitEl = document.createElement('div');
       digitEl.className = 'odo-digit';
@@ -429,7 +503,6 @@
       odo.appendChild(digitEl);
     });
 
-    // Append suffix (e.g. %) inside the odometer element
     if (suffix) {
       var sfxEl = document.createElement('span');
       sfxEl.className = 'stat-sfx';
@@ -437,7 +510,6 @@
       odo.appendChild(sfxEl);
     }
 
-    // Trigger strip roll once the odometer enters the viewport
     ScrollTrigger.create({
       trigger: odo,
       start: 'top 88%',
@@ -445,8 +517,8 @@
       onEnter: function () {
         odo.querySelectorAll('.odo-strip').forEach(function (strip, i) {
           var target = parseInt(digits[i]);
-          var h = strip.children[0].offsetHeight;
-          strip.style.transform = 'translateY(-' + (target * h) + 'px)';
+          var h      = strip.children[0].offsetHeight;
+          strip.style.transform     = 'translateY(-' + (target * h) + 'px)';
           strip.style.transitionDelay = (i * 0.1) + 's';
         });
       }
@@ -462,10 +534,10 @@
     ScrollTrigger.create({
       trigger: sec,
       start: 'top 65%',
-      end: 'bottom 35%',
-      onEnter: function () { document.body.style.background = sec.dataset.bg; },
+      end:   'bottom 35%',
+      onEnter:     function () { document.body.style.background = sec.dataset.bg; },
       onEnterBack: function () { document.body.style.background = sec.dataset.bg; },
-      onLeave: function () { document.body.style.background = '#111111'; },
+      onLeave:     function () { document.body.style.background = '#111111'; },
       onLeaveBack: function () { document.body.style.background = '#111111'; }
     });
   });
@@ -496,9 +568,9 @@
 
   document.querySelectorAll('.btn-primary').forEach(function (btn) {
     btn.addEventListener('mousemove', function (e) {
-      var r = btn.getBoundingClientRect();
-      var dx = (e.clientX - r.left - r.width / 2) * 0.22;
-      var dy = (e.clientY - r.top - r.height / 2) * 0.22;
+      var r  = btn.getBoundingClientRect();
+      var dx = (e.clientX - r.left  - r.width  / 2) * 0.22;
+      var dy = (e.clientY - r.top   - r.height / 2) * 0.22;
       btn.style.transform = 'translate(' + dx + 'px,' + dy + 'px) scale(1.04)';
     });
 
