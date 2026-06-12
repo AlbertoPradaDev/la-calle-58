@@ -26,12 +26,41 @@
     "cta_secondary": "Reservar Mesa"
   },
   "menu_highlights": [
-    { "category": "Petiscos", "name": "Tequeños", "price": "€7" },
-    { "category": "Arepas", "name": "Pabellón", "price": "€11" },
-    { "category": "Cachapas", "name": "Cachapa Llanera", "price": "€24" },
-    { "category": "Clásicos", "name": "Pabellón Criollo", "price": "€15" },
-    { "category": "Pepitos", "name": "Pepito Gratinado", "price": "€19.50" },
-    { "category": "Postres", "name": "Tres Leches", "price": "€5" }
+    {
+      "category": "Petiscos",
+      "name": "Tequeños",
+      "price": "€7"
+    },
+    {
+      "category": "Arepas",
+      "name": "Pabellón",
+      "price": "€11"
+    },
+    {
+      "category": "Cachapas",
+      "name": "Cachapa Llanera",
+      "price": "€24"
+    },
+    {
+      "category": "Clásicos",
+      "name": "Pabellón Criollo",
+      "price": "€15"
+    },
+    {
+      "category": "Pepitos",
+      "name": "Pepito Gratinado",
+      "price": "€19.50"
+    },
+    {
+      "category": "Postres",
+      "name": "Tres Leches",
+      "price": "€5"
+    }
   ],
-  "modules": ["kinetic-marquee", "spotlight-border", "odometer", "color-shift"]
+  "modules": [
+    "kinetic-marquee",
+    "spotlight-border",
+    "odometer",
+    "color-shift"
+  ]
 }
