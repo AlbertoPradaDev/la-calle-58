@@ -34,8 +34,9 @@
   // GPU layer promotion — faster compositing on mobile
   canvas.style.transform = 'translateZ(0)';
 
-  // Cap DPR at 2 — beyond 2x there is no visible difference but memory doubles
-  var DPR = isMobile ? Math.min(window.devicePixelRatio || 1, 2) : 1;
+  // Mobile frames are 640×360 — not enough resolution to benefit from 2x DPR on portrait.
+  // DPR 1 makes the canvas 4x cheaper to draw (half width × half height).
+  var DPR = 1;
 
   var frames = new Array(TOTAL);
   var imagesLoaded = 0; // counts raw Image onload
@@ -199,10 +200,11 @@
 
   if (isMobile) {
     /**
-     * Mobile: scroll sets a target frame; a rAF lerp loop eases the displayed
-     * frame toward it (equivalent of GSAP scrub 0.3 on desktop). Without this,
-     * a fast swipe jumps 10+ frames at once and the animation looks choppy.
-     * heroH/viewH/heroScrollRange cached outside handler to avoid layout thrash.
+     * Mobile: a rAF loop reads window.scrollY directly each frame instead of
+     * relying on scroll events. iOS batches scroll events asynchronously, causing
+     * targetFrame to jump in bursts — reading in rAF syncs the update to the
+     * display refresh cycle. IntersectionObserver pauses the loop when the hero
+     * is fully offscreen so it doesn't run on every tick for the rest of the page.
      */
     var heroScrollEl = document.querySelector('.hero');
     var heroH = heroScrollEl.offsetHeight;
@@ -211,33 +213,35 @@
 
     var targetFrame = 0;
     var floatFrame = 0;
-    var lerpRunning = false;
+    var heroRafId = null;
 
-    function lerpLoop() {
+    function heroRafLoop() {
+      var s = window.scrollY;
+      targetFrame = Math.min(1, Math.max(0, s / heroScrollRange)) * (TOTAL - 1);
       var diff = targetFrame - floatFrame;
       if (Math.abs(diff) < 0.05) {
         floatFrame = targetFrame;
-        lerpRunning = false;
       } else {
-        floatFrame += diff * 0.22;
-        requestAnimationFrame(lerpLoop);
+        floatFrame += diff * 0.3;
       }
       var idx = Math.round(floatFrame);
-      if (idx !== currentFrame) {
+      if (idx !== currentFrame && frames[idx]) {
         currentFrame = idx;
         drawFrame(idx);
       }
+      heroRafId = requestAnimationFrame(heroRafLoop);
     }
 
-    function updateMobileHero() {
-      if (window.scrollY > heroH) return; // past the hero — nothing to draw
-      targetFrame = Math.min(1, Math.max(0, window.scrollY / heroScrollRange)) * (TOTAL - 1);
-      if (!lerpRunning) {
-        lerpRunning = true;
-        requestAnimationFrame(lerpLoop);
+    new IntersectionObserver(function (entries) {
+      if (entries[0].isIntersecting) {
+        if (!heroRafId) heroRafId = requestAnimationFrame(heroRafLoop);
+      } else {
+        cancelAnimationFrame(heroRafId);
+        heroRafId = null;
       }
-    }
-    window.addEventListener('scroll', updateMobileHero, { passive: true });
+    }, { threshold: 0 }).observe(heroScrollEl);
+
+    heroRafId = requestAnimationFrame(heroRafLoop);
 
   } else {
     /**
