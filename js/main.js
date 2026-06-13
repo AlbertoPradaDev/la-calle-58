@@ -168,7 +168,15 @@
   function dismissLoader() {
     var loader = document.getElementById('loader');
     loader.style.opacity = '0';
-    setTimeout(function () { loader.style.display = 'none'; }, 700);
+    setTimeout(function () {
+      loader.style.display = 'none';
+      // Hero entrance — fromTo avoids the opacity:0→snap flash
+      gsap.fromTo('.hero-badge',    { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.55, delay: 0.05, ease: 'power3.out' });
+      gsap.fromTo('.hero h1',       { opacity: 0, y: 28 }, { opacity: 1, y: 0, duration: 0.75, delay: 0.18, ease: 'power3.out' });
+      gsap.fromTo('.hero-tagline',  { opacity: 0, y: 18 }, { opacity: 1, y: 0, duration: 0.55, delay: 0.32, ease: 'power3.out' });
+      gsap.fromTo('.hero-actions',  { opacity: 0, y: 16 }, { opacity: 1, y: 0, duration: 0.5,  delay: 0.46, ease: 'power3.out' });
+      gsap.fromTo('.hero-features', { opacity: 0, y: 14 }, { opacity: 1, y: 0, duration: 0.5,  delay: 0.58, ease: 'power3.out' });
+    }, 700);
   }
 
   function checkAllReady() {

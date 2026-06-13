@@ -343,7 +343,7 @@ nav.scrolled {
   overflow: hidden;
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 #heroCanvas {
@@ -352,13 +352,35 @@ nav.scrolled {
   left: 0;
   display: block;
   z-index: 1;
-  transform: translateZ(0); /* promote to GPU layer */
+  transform: translateZ(0);
+}
+
+/* Left-side gradient for text readability — not a vignette, one directional */
+.hero-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(17, 17, 17, 0.97) 0%,
+    rgba(17, 17, 17, 0.82) 36%,
+    rgba(17, 17, 17, 0.3) 58%,
+    transparent 72%
+  );
+  z-index: 1;
+  pointer-events: none;
 }
 
 @media (max-width: 767px) {
-  /* More scroll distance = each frame lasts longer = smoother animation */
   .hero {
     height: 300vh;
+  }
+
+  .hero-sticky {
+    justify-content: center;
+  }
+
+  .hero-overlay {
+    background: rgba(17, 17, 17, 0.65);
   }
 }
 
@@ -368,18 +390,63 @@ nav.scrolled {
   z-index: 2;
   display: flex;
   flex-direction: column;
-  align-items: center;
-  text-align: center;
+  align-items: flex-start;
+  text-align: left;
   gap: 0;
+  padding-left: clamp(32px, 8vw, 120px);
+  max-width: 600px;
+}
+
+@media (max-width: 767px) {
+  .hero-content {
+    align-items: center;
+    text-align: center;
+    padding-left: 24px;
+    padding-right: 24px;
+    max-width: 100%;
+  }
+}
+
+/* Initially hidden — GSAP animates these in on load */
+.hero-badge,
+.hero h1,
+.hero-tagline,
+.hero-actions,
+.hero-features {
+  opacity: 0;
+}
+
+/* Badge chip */
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(255, 107, 26, 0.1);
+  border: 1px solid rgba(255, 107, 26, 0.28);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  padding: 6px 14px;
+  border-radius: 100px;
+  margin-bottom: 22px;
+}
+
+.badge-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
 }
 
 .hero h1 {
-  font-size: clamp(52px, 13vw, 152px);
+  font-size: clamp(52px, 10vw, 128px);
   font-weight: 900;
   letter-spacing: -0.03em;
-  line-height: 0.88;
+  line-height: 0.9;
   color: var(--text);
-  margin-bottom: 10px;
+  margin-bottom: 18px;
   text-shadow: 0 4px 30px rgba(0, 0, 0, .92), 0 2px 10px rgba(0, 0, 0, .75), 0 0 80px rgba(0, 0, 0, .6);
   white-space: nowrap;
 }
@@ -389,33 +456,54 @@ nav.scrolled {
   font-style: normal;
 }
 
-.hero .hero-sub {
-  font-size: clamp(10px, 2.8vw, 14px);
-  font-weight: 600;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--text);
-  margin-bottom: 5px;
-  background: rgba(10, 8, 6, 0.72);
-  padding: 5px 14px;
-  display: inline-block;
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  border-radius: 100px;
-  max-width: 90vw;
+.h1-dot {
+  color: var(--accent);
 }
 
-.hero .hero-loc {
-  font-family: 'JetBrains Mono', monospace;
-  font-size: 11px;
-  color: rgba(240, 237, 232, 0.65);
-  margin-bottom: 22px;
-  background: rgba(10, 8, 6, 0.65);
-  padding: 4px 14px;
-  display: inline-block;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-  border-radius: 100px;
+.hero-tagline {
+  font-size: clamp(14px, 1.6vw, 17px);
+  color: rgba(240, 237, 232, 0.75);
+  line-height: 1.65;
+  margin-bottom: 32px;
+  max-width: 38ch;
+}
+
+/* Hero CTA row */
+.hero-actions {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin-bottom: 36px;
+}
+
+/* Features strip */
+.hero-features {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+}
+
+.hero-feat {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  color: rgba(240, 237, 232, 0.6);
+}
+
+.hero-feat svg {
+  color: var(--accent);
+  flex-shrink: 0;
+}
+
+.hero-feat-sep {
+  width: 1px;
+  height: 14px;
+  background: rgba(240, 237, 232, 0.15);
+  flex-shrink: 0;
 }
 
 .hero .scroll-hint {
@@ -438,7 +526,7 @@ nav.scrolled {
   white-space: nowrap;
 }
 
-/* Shared button styles live here so hero & other sections can use them */
+/* Shared button styles */
 .btn-primary {
   display: inline-flex;
   align-items: center;
@@ -450,7 +538,7 @@ nav.scrolled {
   font-size: 15px;
   font-weight: 700;
   letter-spacing: 0.02em;
-  transition: background 0.3s ease, transform 0.3s var(--ease), box-shadow 0.3s ease;
+  transition: background 0.3s ease, transform 0.3s var(--ease);
   will-change: transform;
   cursor: pointer;
   border: none;
@@ -468,6 +556,28 @@ nav.scrolled {
 
 .btn-primary:hover svg {
   transform: translateX(3px);
+}
+
+.btn-ghost {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: transparent;
+  color: var(--text);
+  padding: 13px 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(240, 237, 232, 0.2);
+  font-size: 15px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: background 0.3s ease, border-color 0.3s ease;
+  cursor: pointer;
+}
+
+.btn-ghost:hover {
+  background: rgba(240, 237, 232, 0.08);
+  border-color: rgba(240, 237, 232, 0.38);
+  color: var(--text);
 }
 
 .btn-outline {
@@ -492,21 +602,34 @@ nav.scrolled {
   color: #fff;
 }
 
-@media (max-width: 500px) {
+@media (max-width: 640px) {
   .hero h1 {
     font-size: clamp(40px, 11vw, 80px);
     white-space: normal;
     line-height: 0.9;
   }
 
-  .hero .hero-sub {
-    letter-spacing: 0.1em;
-    font-size: 10px;
+  .btn-primary,
+  .btn-ghost {
+    font-size: 14px;
+    padding: 12px 22px;
   }
 
-  .btn-primary {
-    font-size: 14px;
-    padding: 12px 24px;
+  .hero-actions {
+    justify-content: center;
+  }
+
+  .hero-features {
+    justify-content: center;
+  }
+}
+
+@media (max-width: 640px) {
+  .hero .hero-sub,
+  .hero .hero-loc,
+  .hero .scroll-hint {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
   }
 }
 
@@ -630,12 +753,18 @@ nav.scrolled {
 
 .spot-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 1px;
   background: var(--border);
   border-radius: 24px;
   overflow: hidden;
   border: 1px solid var(--border);
+}
+
+@media (max-width: 680px) {
+  .spot-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .spot-card {
@@ -717,6 +846,53 @@ nav.scrolled {
   font-weight: 400;
 }
 
+
+/* Menu footer CTA */
+.menu-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 56px;
+}
+
+.btn-menu-full {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  padding: 16px 40px;
+  border-radius: 8px;
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  transition: border-color 0.3s ease, background 0.3s ease;
+  cursor: pointer;
+}
+
+.btn-menu-full:hover {
+  border-color: var(--accent);
+  background: rgba(255, 107, 26, 0.06);
+  color: var(--accent);
+}
+
+.btn-menu-full svg {
+  transition: transform 0.3s var(--ease);
+  flex-shrink: 0;
+}
+
+.btn-menu-full:hover svg {
+  transform: translateX(3px);
+}
+
+.menu-footer-note {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+}
 
 /* ── 9. STATS / ODOMETER ── */
 
@@ -968,50 +1144,230 @@ nav.scrolled {
 }
 
 
+/* ── 11b. MAP ── */
+
+.map-wrap {
+  margin-bottom: 32px;
+  border-radius: 20px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  position: relative;
+}
+
+.map-wrap iframe {
+  display: block;
+  width: 100%;
+  height: 380px;
+  border: none;
+  filter: grayscale(0.3) brightness(0.9);
+}
+
+.map-link {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(17, 17, 17, 0.88);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 16px;
+  border-radius: 100px;
+  border: 1px solid var(--border);
+  transition: color 0.3s ease, border-color 0.3s ease;
+  letter-spacing: 0.02em;
+}
+
+.map-link:hover {
+  color: var(--accent);
+  border-color: rgba(255, 107, 26, 0.4);
+}
+
+@media (max-width: 640px) {
+  .map-wrap iframe {
+    height: 260px;
+  }
+}
+
+
 /* ── 12. FOOTER ── */
 
-footer {
+.footer-v2 {
   border-top: 1px solid var(--border);
-  padding: 36px 40px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  flex-wrap: wrap;
-  gap: 16px;
 }
 
-.footer-logo {
-  font-size: 16px;
+.footer-main {
+  padding: 72px 60px 60px;
+  display: grid;
+  grid-template-columns: 44% 56%;
+  gap: 60px;
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+.footer-brand {
+  /* no max-width — let the grid column define the width */
+}
+
+.footer-name {
+  font-size: clamp(36px, 5.5vw, 68px);
   font-weight: 900;
-  letter-spacing: 0.06em;
+  letter-spacing: -0.03em;
+  line-height: 1;
+  color: var(--text);
+  margin-bottom: 16px;
+  white-space: nowrap;
 }
 
-.footer-logo em {
-  color: var(--accent);
+.footer-name em {
+  color: var(--text);
   font-style: normal;
 }
 
-.footer-copy {
-  font-size: 12px;
-  color: var(--muted);
+.footer-dot {
+  color: var(--accent);
 }
 
-.footer-right {
+.footer-sub {
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.7;
+}
+
+.footer-cols {
+  flex: 1;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 40px;
+  padding-top: 8px;
+}
+
+.footer-col {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.footer-col-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.footer-col a {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  transition: color 0.3s ease;
+  line-height: 1;
+}
+
+.footer-col a:hover {
+  color: var(--accent);
+}
+
+.footer-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1;
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #4ade80;
+  flex-shrink: 0;
+  box-shadow: 0 0 6px rgba(74, 222, 128, 0.5);
+}
+
+.footer-addr {
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.6;
+}
+
+.footer-bottom {
+  border-top: 1px solid var(--border);
+  padding: 22px 60px;
   display: flex;
   align-items: center;
-  gap: 20px;
+  justify-content: space-between;
+  gap: 16px;
   flex-wrap: wrap;
+  max-width: 100%;
 }
 
-.footer-ig,
+.footer-copy {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.footer-tag {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: var(--muted);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
 .footer-made {
   font-family: 'JetBrains Mono', monospace;
-  font-size: 12px;
+  font-size: 11px;
   color: var(--muted);
+  letter-spacing: 0.06em;
   transition: color 0.3s ease;
 }
 
-.footer-ig:hover,
 .footer-made:hover {
   color: var(--accent);
+}
+
+@media (max-width: 900px) {
+  .footer-main {
+    flex-direction: column;
+    gap: 48px;
+    padding: 52px 32px 44px;
+  }
+
+  .footer-cols {
+    grid-template-columns: repeat(3, 1fr);
+    width: 100%;
+  }
+}
+
+@media (max-width: 640px) {
+  .footer-cols {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .footer-bottom {
+    padding: 20px 32px;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .footer-tag {
+    display: none;
+  }
+
+  .footer-name {
+    font-size: 40px;
+  }
 }
